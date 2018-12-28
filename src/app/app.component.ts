@@ -1,57 +1,131 @@
-import { Component } from '@angular/core';
-import { from, pipe, interval } from 'rxjs';
-import { map, take } from 'rxjs/operators';
+import { Component, ElementRef, NgZone, OnInit, ViewChild, OnDestroy } from '@angular/core';
+import { FormControl } from '@angular/forms';
+import { } from 'google-maps';
+import { MapsAPILoader } from '@agm/core';
+import { GeoLocationService } from './services/geo-location.service';
+import { Subscription, timer } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
+
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent {
-  origin = { lat: 18.847242, lng: -97.106183 }
-  destination = { lat: 18.846841, lng: -97.101203 }
-  localization = [
-    { lat: 18.846541, long: -97.105738, time: "5 min" },
-    { lat: 18.845566, long: -97.105405, time: "4 min" },
-    { lat: 18.846039, long: -97.103371, time: "3 min" },
-    { lat: 18.846425, long: -97.102287, time: "2 min" },
-    { lat: 18.846604, long: -97.101871, time: "1 min" },
-    { lat: 18.846841, long: -97.101203, time: "Paquete entregado" }
-  ]
+export class AppComponent implements OnInit, OnDestroy {
+
+  origin: {};
+  destination: {};
+  searchControl: FormControl;
+  subscription: Subscription;
+  status: string = 'el paquete va en camino';
+  @ViewChild("search")
+  public searchElementRef: ElementRef;
+
+  constructor(
+    private mapsAPILoader: MapsAPILoader,
+    private ngZone: NgZone,
+    private geoLocationService: GeoLocationService
+  ) { }
 
   public renderOptions = {
     suppressMarkers: true,
+
   }
 
   public markerOptions = {
     origin: {
       icon: 'https://a.fsdn.com/allura/p/vsms-codeigniter/icon?1497042495',
+      infoWindow: `${this.status}`
+
     },
     destination: {
       icon: 'https://cdn4.iconfinder.com/data/icons/cc_mono_icon_set/blacks/48x48/round.png',
-      infoWindow: ``
     },
   }
 
-  go() {
-    interval(3000)
-      .pipe(
-        take(this.localization.length),
-        map(i => this.localization[i]))
-      .subscribe((data) => {
-        this.origin = { lat: data.lat, lng: data.long };
-        this.markerOptions = {
-          origin: {
-            icon: 'https://a.fsdn.com/allura/p/vsms-codeigniter/icon?1497042495',
-          },
-          destination: {
-            icon: 'https://cdn4.iconfinder.com/data/icons/cc_mono_icon_set/blacks/48x48/round.png',
-            infoWindow: `
-              <h4>Status<h4>
-              <p>${data.time}</p>
-              `
-          }
-        }
+  ngOnInit() {
+    //create search FormControl
+    this.searchControl = new FormControl();
+
+    //set current position
+    this.setCurrentPosition();
+
+    //load Places Autocomplete
+    this.mapsAPILoader.load().then(() => {
+      let autocomplete = new google.maps.places.Autocomplete(this.searchElementRef.nativeElement, {
+        componentRestrictions: { country: 'mx' }
       });
+      autocomplete.addListener("place_changed", () => {
+        this.ngZone.run(() => {
+          //get the place result
+          let place: google.maps.places.PlaceResult = autocomplete.getPlace();
+
+          //verify result
+          if (place.geometry === undefined || place.geometry === null) {
+            return;
+          }
+          //set latitude, longitude 
+          this.destination = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+          }
+
+        });
+      });
+    });
   }
+
+  private setCurrentPosition() {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        this.origin = { lat: position.coords.latitude, lng: position.coords.longitude }
+      });
+    }
+  }
+
+  startTravel() {
+    this.subscription = timer(0, 10000).pipe(
+      switchMap(() => this.geoLocationService.getPosition())
+    ).subscribe(pos => {
+      this.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      let service = new google.maps.DistanceMatrixService;
+
+      service.getDistanceMatrix({
+        origins: [this.origin],
+        destinations: [this.destination],
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC,
+        avoidHighways: false,
+        avoidTolls: false
+      }, (response, status) => {
+        if (status !== google.maps.DistanceMatrixStatus.OK) {
+          this.status = `Error was: ${status}`
+        } else {
+          this.status = `El pauqete se encuentra a ${response.rows[0].elements[0].distance.text} 
+          llegara aproximadamente en ${response.rows[0].elements[0].duration.text}`
+        }
+      })
+
+      this.markerOptions = {
+        origin: {
+          icon: 'https://a.fsdn.com/allura/p/vsms-codeigniter/icon?1497042495',
+          infoWindow: `${this.status}`
+
+        },
+        destination: {
+          icon: 'https://cdn4.iconfinder.com/data/icons/cc_mono_icon_set/blacks/48x48/round.png',
+        },
+      }
+
+      if (JSON.stringify(this.origin) === JSON.stringify(this.destination)) {
+        this.subscription.unsubscribe();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
+  }
+
 }

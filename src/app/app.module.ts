@@ -4,6 +4,7 @@ import { AgmCoreModule } from '@agm/core';
 import { AppComponent } from './app.component';
 import { CommonModule } from '@angular/common';
 import { AgmDirectionModule } from 'agm-direction'
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
@@ -12,8 +13,11 @@ import { AgmDirectionModule } from 'agm-direction'
   imports: [
     BrowserModule,
     CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
     AgmCoreModule.forRoot({
-      apiKey: 'AIzaSyDFTKbcSXEN22pUx3zfaabEOGyy7oOZtmI'
+      apiKey: 'AIzaSyDFTKbcSXEN22pUx3zfaabEOGyy7oOZtmI',
+      libraries: ["places"]
     }),
     AgmDirectionModule
   ],

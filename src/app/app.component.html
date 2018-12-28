@@ -1,8 +1,12 @@
-<agm-map [latitude]="lat" [longitude]="lng">
+<input placeholder="search destination" type="text" #search [formControl]="searchControl" style=" width: 50%; margin-bottom: 10px">
+
+<agm-map [zoom]="12" [latitude]="origin?.lat" [longitude]="origin?.lng">
   <agm-direction 
   [renderOptions]="renderOptions" 
-  [markerOptions]="markerOptions"
+  [markerOptions]="markerOptions" 
   [origin]="origin" 
-  [destination]="destination"></agm-direction>
+  [destination]="destination">
+</agm-direction>
 </agm-map>
-<button (click)="go()"> Start</button>
+
+<button (click)="startTravel()">Start</button>
