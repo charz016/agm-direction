@@ -18,7 +18,7 @@ export class AppComponent implements OnInit, OnDestroy {
   destination: {};
   searchControl: FormControl;
   subscription: Subscription;
-  status: string = 'el paquete va en camino';
+  status: string = 'Seleccione el destino y click para comenzar';
   @ViewChild("search")
   public searchElementRef: ElementRef;
 
@@ -36,7 +36,7 @@ export class AppComponent implements OnInit, OnDestroy {
   public markerOptions = {
     origin: {
       icon: 'https://a.fsdn.com/allura/p/vsms-codeigniter/icon?1497042495',
-      infoWindow: `${this.status}`
+      infoWindow: ``
 
     },
     destination: {
@@ -90,7 +90,7 @@ export class AppComponent implements OnInit, OnDestroy {
     ).subscribe(pos => {
       this.origin = { lat: pos.coords.latitude, lng: pos.coords.longitude }
       let service = new google.maps.DistanceMatrixService;
-
+      this.status ='en camino'
       service.getDistanceMatrix({
         origins: [this.origin],
         destinations: [this.destination],
@@ -102,7 +102,7 @@ export class AppComponent implements OnInit, OnDestroy {
         if (status !== google.maps.DistanceMatrixStatus.OK) {
           this.status = `Error was: ${status}`
         } else {
-          this.status = `El pauqete se encuentra a ${response.rows[0].elements[0].distance.text} 
+          this.status = `El paquete se encuentra a ${response.rows[0].elements[0].distance.text} 
           llegara aproximadamente en ${response.rows[0].elements[0].duration.text}`
         }
       })
